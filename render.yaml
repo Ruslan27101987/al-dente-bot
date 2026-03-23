@@ -1,9 +1,9 @@
 services:
   - type: worker
     name: al-dente-bot
-    env: python
+    runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    startCommand: python Telegram/hello_guests.py
     envVars:
       - key: BOT_TOKEN
         sync: false
