@@ -19,8 +19,7 @@ from telegram.ext import (
     filters,
 )
 
-TOKEN = "8708629984:AAEIj38HnsslVH60lT31Y80ng6DY_w54-bA"
-
+TOKEN = os.getenv("BOT_TOKEN")
 EMAIL_SENDER = "ruslan.himich@gmail.com"
 EMAIL_APP_PASSWORD = "qyxm bjbr qyoe ticz"
 EMAIL_RECEIVER = "Al_dente2025@ukr.net"
@@ -124,7 +123,9 @@ async def promo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📞 Телефон: +38067 761 77 00",
+        "📞 Телефон: +38067 761 77 00\n"
+        "📍 Al Dente, Яремче\n"
+        "🗺 Карта: https://maps.app.goo.gl/nUebD1ywHSFDgShQ9?g_st=ic",
         reply_markup=get_main_keyboard()
     )
 
