@@ -286,10 +286,11 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "Дякуємо! Ваше бронювання прийнято ✅"
 
     if email_error:
-        text += "\n\n⚠️ Лист на пошту тимчасово не відправився."
+    print(f"Помилка email: {email_error}")
 
     if calendar_error:
-        text += "\n⚠️ Не вдалося створити посилання для календаря."
+    print(f"Помилка календаря: {calendar_error}")
+
 
     await update.message.reply_text(
         text,
@@ -365,7 +366,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
