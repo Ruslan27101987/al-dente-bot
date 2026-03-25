@@ -2,6 +2,8 @@ import csv
 import os
 import smtplib
 from email.message import EmailMessage
+from datetime import datetime, timedelta
+from urllib.parse import quote
 
 from telegram import (
     Update,
@@ -20,9 +22,10 @@ from telegram.ext import (
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
-EMAIL_SENDER = "ruslan.himich@gmail.com"
-EMAIL_APP_PASSWORD = "qyxm bjbr qyoe ticz"
-EMAIL_RECEIVER = "Al_dente2025@ukr.net"
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
+EMAIL_SENDER = os.getenv("EMAIL_SENDER")
+EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
+EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
 
 CSV_FILE = "bookings.csv"
 
@@ -68,6 +71,9 @@ def save_booking_to_csv(data: dict):
 
 
 def send_booking_email(data: dict):
+    if not EMAIL_SENDER or not EMAIL_APP_PASSWORD or not EMAIL_RECEIVER:
+        raise ValueError("Не задані EMAIL_SENDER / EMAIL_APP_PASSWORD / EMAIL_RECEIVER")
+
     subject = "Нова бронь Al Dente Club"
     body = (
         "Нова заявка на бронювання\n\n"
@@ -88,6 +94,52 @@ def send_booking_email(data: dict):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(EMAIL_SENDER, EMAIL_APP_PASSWORD)
         smtp.send_message(msg)
+
+
+def build_google_calendar_link(name: str, phone: str, date_str: str, time_str: str, guests: str) -> str:
+    start_dt = datetime.strptime(f"{date_str} {time_str}", "%d.%m.%Y %H:%M")
+    end_dt = start_dt + timedelta(hours=2)
+
+    dates = start_dt.strftime("%Y%m%dT%H%M%S") + "/" + end_dt.strftime("%Y%m%dT%H%M%S")
+
+    title = "Бронювання столика в Al Dente"
+    details = (
+        f"Ім'я: {name}\n"
+        f"Телефон: {phone}\n"
+        f"Кількість гостей: {guests}\n"
+        f"Ресторан: Al Dente, Яремче"
+    )
+    location = "Al Dente, Яремче"
+
+    url = (
+        "https://calendar.google.com/calendar/render?action=TEMPLATE"
+        f"&text={quote(title)}"
+        f"&dates={dates}"
+        f"&details={quote(details)}"
+        f"&location={quote(location)}"
+    )
+    return url
+
+
+async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: dict):
+    if not ADMIN_CHAT_ID:
+        print("ADMIN_CHAT_ID не заданий")
+        return
+
+    text = (
+        "📥 Нова бронь!\n\n"
+        f"👤 Ім'я: {data['name']}\n"
+        f"📞 Телефон: {data['phone']}\n"
+        f"📅 Дата: {data['date']}\n"
+        f"🕒 Час: {data['time']}\n"
+        f"👥 Гостей: {data['guests']}\n"
+        f"💬 Коментар: {data['comment']}"
+    )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,
+        text=text
+    )
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -195,19 +247,53 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return ConversationHandler.END
 
+    email_error = None
     try:
         send_booking_email(booking_data)
     except Exception as e:
-        await update.message.reply_text(
-            "Бронювання збережено у файл, але лист на пошту не відправився.\n"
-            f"Помилка: {e}",
-            reply_markup=get_main_keyboard()
+        email_error = str(e)
+
+    try:
+        await notify_admin_about_booking(context, booking_data)
+    except Exception as e:
+        print(f"Помилка відправки адміну в Telegram: {e}")
+
+    calendar_error = None
+    try:
+        calendar_url = build_google_calendar_link(
+            name=booking_data["name"],
+            phone=booking_data["phone"],
+            date_str=booking_data["date"],
+            time_str=booking_data["time"],
+            guests=booking_data["guests"],
         )
-        return ConversationHandler.END
+
+        keyboard = [
+            [InlineKeyboardButton("📅 Додати в Google Календар", url=calendar_url)]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        text = (
+            "Дякуємо! Ваше бронювання прийнято ✅\n\n"
+            f"📅 {booking_data['date']}\n"
+            f"🕒 {booking_data['time']}\n"
+            f"👥 Гостей: {booking_data['guests']}\n\n"
+            "Додайте бронювання в календар 👇"
+        )
+    except Exception as e:
+        calendar_error = str(e)
+        reply_markup = get_main_keyboard()
+        text = "Дякуємо! Ваше бронювання прийнято ✅"
+
+    if email_error:
+        text += "\n\n⚠️ Лист на пошту тимчасово не відправився."
+
+    if calendar_error:
+        text += "\n⚠️ Не вдалося створити посилання для календаря."
 
     await update.message.reply_text(
-        "Дякуємо! Ваше бронювання прийнято ✅",
-        reply_markup=get_main_keyboard()
+        text,
+        reply_markup=reply_markup
     )
 
     context.user_data.clear()
@@ -279,7 +365,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
