@@ -142,6 +142,44 @@ async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: d
     )
 
 
+async def send_booking_reminder(context: ContextTypes.DEFAULT_TYPE):
+    data = context.job.data
+
+    text = (
+        "⏰ Нагадуємо про ваше бронювання в Al Dente\n\n"
+        f"📅 {data['date']}\n"
+        f"🕒 {data['time']}\n"
+        f"👥 Гостей: {data['guests']}\n\n"
+        "Чекаємо на вас 🍝"
+    )
+
+    await context.bot.send_message(
+        chat_id=data["chat_id"],
+        text=text
+    )
+
+
+async def schedule_reminder(context: ContextTypes.DEFAULT_TYPE, data: dict):
+    try:
+        booking_time = datetime.strptime(
+            f"{data['date']} {data['time']}",
+            "%d.%m.%Y %H:%M"
+        )
+
+        reminder_time = booking_time - timedelta(hours=2)
+
+        if reminder_time > datetime.now():
+            context.job_queue.run_once(
+                send_booking_reminder,
+                when=reminder_time,
+                data=data
+            )
+        else:
+            print("Час нагадування вже минув")
+    except Exception as e:
+        print(f"Помилка нагадування: {e}")
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привіт! Я бот AI Dente 🇮🇹\nОберіть потрібний розділ нижче 👇",
@@ -236,6 +274,7 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "time": context.user_data["time"],
         "guests": context.user_data["guests"],
         "comment": context.user_data["comment"],
+        "chat_id": update.effective_chat.id,
     }
 
     try:
@@ -257,6 +296,11 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await notify_admin_about_booking(context, booking_data)
     except Exception as e:
         print(f"Помилка відправки адміну в Telegram: {e}")
+
+    try:
+        await schedule_reminder(context, booking_data)
+    except Exception as e:
+        print(f"Помилка планування нагадування: {e}")
 
     calendar_error = None
     try:
@@ -290,7 +334,6 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if calendar_error:
         print(f"Помилка календаря: {calendar_error}")
-
 
     await update.message.reply_text(
         text,
