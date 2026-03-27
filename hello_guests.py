@@ -44,6 +44,7 @@ def get_main_keyboard():
     keyboard = [
         ["🍝 Меню", "🎁 Акції"],
         ["📞 Контакти", "📅 Бронювання"],
+        ["🛵 Доставка", "💎 Клуб"],
     ]
     return ReplyKeyboardMarkup(
         keyboard,
@@ -217,8 +218,6 @@ async def send_due_reminders(context: ContextTypes.DEFAULT_TYPE):
 
             reminder_dt = booking_dt - timedelta(hours=2)
 
-            # Отправляем, если уже наступило время напоминания,
-            # но бронь еще не прошла
             if reminder_dt <= now < booking_dt:
                 text = (
                     "⏰ Нагадуємо про ваше бронювання в Al Dente\n\n"
@@ -248,7 +247,7 @@ async def send_due_reminders(context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привіт! Я бот AI Dente 🇮🇹\nОберіть потрібний розділ нижче 👇",
+        "Привіт! Я бот Al Dente 🇮🇹\nОберіть потрібний розділ нижче 👇",
         reply_markup=get_main_keyboard()
     )
 
@@ -283,6 +282,31 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📍 Al Dente, Яремче\n"
         "🗺 Карта: https://maps.app.goo.gl/nUebD1ywHSFDgShQ9?g_st=ic",
         reply_markup=get_main_keyboard()
+    )
+
+
+async def delivery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🛵 Перейти до доставки", url="https://al-dente.choiceqr.com")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "Замовити доставку можна тут 👇",
+        reply_markup=reply_markup
+    )
+
+
+async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("💎 Дізнатись більше", url="https://al-dente.choiceqr.com/section:akciyi-ta-propoziciyi/dlya-tebe")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "Al Dente Club 💎\n\n"
+        "Отримуйте спеціальні пропозиції та приємні бонуси для гостей 👇",
+        reply_markup=reply_markup
     )
 
 
@@ -426,6 +450,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await contact_command(update, context)
     elif text == "📅 Бронювання":
         return await book_start(update, context)
+    elif text == "🛵 Доставка":
+        await delivery_command(update, context)
+    elif text == "💎 Клуб":
+        await club_command(update, context)
     else:
         await update.message.reply_text(
             "Оберіть кнопку з меню нижче 👇",
@@ -461,6 +489,8 @@ def main():
     app.add_handler(CommandHandler("menu", menu_command))
     app.add_handler(CommandHandler("promo", promo_command))
     app.add_handler(CommandHandler("contact", contact_command))
+    app.add_handler(CommandHandler("delivery", delivery_command))
+    app.add_handler(CommandHandler("club", club_command))
     app.add_handler(booking_handler)
 
     app.add_handler(
@@ -470,7 +500,6 @@ def main():
         )
     )
 
-    # Проверка CSV каждую минуту
     if app.job_queue is not None:
         app.job_queue.run_repeating(send_due_reminders, interval=60, first=10)
         print("Перевірка CSV-нагадувань запущена")
@@ -483,5 +512,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
