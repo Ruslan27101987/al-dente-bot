@@ -304,8 +304,14 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "Al Dente Club 💎\n\n"
-        "Отримуйте спеціальні пропозиції та приємні бонуси для гостей 👇",
+        "💎 Al Dente Club\n\n"
+        "Станьте членом клубу та отримуйте -30% на кухню 🍝\n\n"
+        "Умови участі:\n"
+        "• Вартість: 499 грн\n"
+        "• Знижка: -30% на кухню\n"
+        "• Не діє на акції та спецпропозиції\n"
+        "• Термін дії: 2 місяці\n\n"
+        "Після оплати ви отримаєте електронну клубну карту 💎",
         reply_markup=reply_markup
     )
 
