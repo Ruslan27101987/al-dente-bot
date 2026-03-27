@@ -297,11 +297,15 @@ async def delivery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+aasync def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("💎 Дізнатись більше", url="https://al-dente.choiceqr.com/section:akciyi-ta-propoziciyi/dlya-tebe")]
+        ["💎 Стати членом клубу"]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
 
     await update.message.reply_text(
         "💎 Al Dente Club\n\n"
@@ -312,7 +316,7 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• Не діє на акції та спецпропозиції\n"
         "• Термін дії: 2 місяці\n\n"
         "Після оплати ви отримаєте електронну клубну карту 💎\n\n"
-        "Щоб приєднатись, напишіть: Стати членом клубу",
+        "Натисніть кнопку нижче, щоб продовжити 👇",
         reply_markup=reply_markup
     )
 
