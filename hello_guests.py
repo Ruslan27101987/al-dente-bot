@@ -287,7 +287,7 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def delivery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🛵 Перейти до доставки", url="https://al-dente.choiceqr.com")]
+        [InlineKeyboardButton("🛵 Перейти до доставки", url="https://al-dente.choiceqr.com/uk/delivery")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
