@@ -500,11 +500,11 @@ def main():
         )
     )
 
-    i# if app.job_queue is not None:
-     #     app.job_queue.run_repeating(send_due_reminders, interval=60, first=10)
-     #     print("Перевірка CSV-нагадувань запущена")
-     # else:
-     #     print("JobQueue не доступний")
+    # if app.job_queue is not None:
+    #     app.job_queue.run_repeating(send_due_reminders, interval=60, first=10)
+    #     print("Перевірка CSV-нагадувань запущена")
+    # else:
+    #     print("JobQueue не доступний")
 
     print("Бот запущений")
     app.run_polling(drop_pending_updates=True)
