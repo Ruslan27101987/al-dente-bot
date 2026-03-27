@@ -299,13 +299,9 @@ async def delivery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        ["💎 Стати членом клубу"]
+        [InlineKeyboardButton("💎 Стати членом клубу", callback_data="club_join")]
     ]
-    reply_markup = ReplyKeyboardMarkup(
-        keyboard,
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
         "💎 Al Dente Club\n\n"
@@ -320,6 +316,16 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
+async def club_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "💎 Вступ до Al Dente Club\n\n"
+        "Напишіть, будь ласка, ваше ім'я:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return CLUB_NAME
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -546,6 +552,7 @@ def main():
     club_handler = ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex("^Стати членом клубу$"), club_join_start),
+            CallbackQueryHandler(club_join_callback, pattern="^club_join$"),
         ],
         states={
             CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_name)],
