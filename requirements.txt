@@ -1,4 +1,4 @@
-aiogram
+python-telegram-bot[job-queue]
 python-dotenv
 aiohttp
-python-telegram-bot[job-queue]
+aiogram
