@@ -233,7 +233,7 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-aasync def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["club_chat_id"] = update.effective_chat.id
 
     await update.message.reply_text(
