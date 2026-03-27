@@ -29,7 +29,7 @@ EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
 
 CSV_FILE = "bookings.csv"
 
-NAME, PHONE, DATE, TIME, GUESTS, COMMENT = range(6)
+NAME, PHONE, DATE, TIME, GUESTS, COMMENT, CLUB_NAME, CLUB_BIRTHDAY, CLUB_PHONE = range(9)
 
 
 def get_admin_chat_id():
@@ -466,7 +466,55 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Оберіть кнопку з меню нижче 👇",
             reply_markup=get_main_keyboard()
         )
+async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "💎 Вступ до Al Dente Club\n\n"
+        "Напишіть, будь ласка, ваше ім'я:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return CLUB_NAME
 
+
+async def club_get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_name"] = update.message.text.strip()
+    await update.message.reply_text("Вкажіть дату народження, наприклад: 25.03.1995")
+    return CLUB_BIRTHDAY
+
+
+async def club_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_birthday"] = update.message.text.strip()
+    await update.message.reply_text("Вкажіть ваш телефон:")
+    return CLUB_PHONE
+
+
+async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_phone"] = update.message.text.strip()
+
+    text = (
+        "💎 Нова заявка на вступ до Al Dente Club\n\n"
+        f"👤 Ім'я: {context.user_data['club_name']}\n"
+        f"🎂 Дата народження: {context.user_data['club_birthday']}\n"
+        f"📞 Телефон: {context.user_data['club_phone']}"
+    )
+
+    admin_chat_id = get_admin_chat_id()
+    if admin_chat_id:
+        try:
+            await context.bot.send_message(chat_id=admin_chat_id, text=text)
+        except Exception as e:
+            print(f"Помилка відправки заявки клубу адміну: {e}")
+
+    await update.message.reply_text(
+        "💎 Ваша заявка прийнята!\n\n"
+        "Для активації клубу необхідно оплатити 499 грн 👇\n\n"
+        "💳 Реквізити для оплати:\n"
+        "Monobank: 5408 8100 4237 2606\n"
+        "Отримувач: Al Dente\n\n"
+        "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
 
 def main():
     if not TOKEN:
@@ -491,6 +539,17 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel_booking)],
     )
+    club_handler = ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("^Стати членом клубу$"), club_join_start),
+        ],
+        states={
+            CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_name)],
+            CLUB_BIRTHDAY: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_birthday)],
+            CLUB_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_phone)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_booking)],
+    )
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("menu", menu_command))
@@ -499,6 +558,7 @@ def main():
     app.add_handler(CommandHandler("delivery", delivery_command))
     app.add_handler(CommandHandler("club", club_command))
     app.add_handler(booking_handler)
+    app.add_handler(club_handler)
 
     app.add_handler(
         MessageHandler(
