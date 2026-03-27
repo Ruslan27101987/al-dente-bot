@@ -297,7 +297,7 @@ async def delivery_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-aasync def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         ["💎 Стати членом клубу"]
     ]
