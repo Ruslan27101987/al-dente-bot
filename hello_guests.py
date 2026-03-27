@@ -30,7 +30,7 @@ EMAIL_RECEIVER = os.getenv("EMAIL_RECEIVER")
 
 CSV_FILE = "bookings.csv"
 
-NAME, PHONE, DATE, TIME, GUESTS, COMMENT, CLUB_NAME, CLUB_BIRTHDAY, CLUB_PHONE = range(9)
+NAME, PHONE, DATE, TIME, GUESTS, COMMENT, CLUB_NAME, CLUB_BIRTHDAY, CLUB_PHONE, CLUB_RECEIPT = range(10)
 
 
 def get_admin_chat_id():
@@ -233,7 +233,9 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+aasync def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_chat_id"] = update.effective_chat.id
+
     await update.message.reply_text(
         "💎 Вступ до Al Dente Club\n\n"
         "Напишіть, будь ласка, ваше ім'я:",
@@ -245,6 +247,8 @@ async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def club_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    context.user_data["club_chat_id"] = query.message.chat_id
 
     await query.message.reply_text(
         "💎 Вступ до Al Dente Club\n\n"
@@ -269,12 +273,103 @@ async def club_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["club_phone"] = update.message.text.strip()
 
-    text = (
-        "💎 Нова заявка на вступ до Al Dente Club\n\n"
-        f"👤 Ім'я: {context.user_data['club_name']}\n"
-        f"🎂 Дата народження: {context.user_data['club_birthday']}\n"
-        f"📞 Телефон: {context.user_data['club_phone']}"
+    await update.message.reply_text(
+        "💎 Ваша заявка прийнята!\n\n"
+        "Для активації клубу необхідно оплатити 499 грн 👇\n\n"
+        "💳 Реквізити для оплати:\n"
+        "Monobank: 5408 8100 4237 2606\n"
+        "Отримувач: Al Dente\n\n"
+        "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
+        reply_markup=ReplyKeyboardRemove()
     )
+async def club_get_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.photo:
+        await update.message.reply_text(
+            "Будь ласка, надішліть саме фото або скрін квитанції 📸"
+        )
+        return CLUB_RECEIPT
+
+    photo = update.message.photo[-1].file_id
+
+    guest_name = context.user_data.get("club_name", "")
+    guest_birthday = context.user_data.get("club_birthday", "")
+    guest_phone = context.user_data.get("club_phone", "")
+    guest_chat_id = context.user_data.get("club_chat_id", "")
+
+    caption = (
+        "💎 Нова оплата клубу\n\n"
+        f"👤 Ім'я: {guest_name}\n"
+        f"🎂 Дата народження: {guest_birthday}\n"
+        f"📞 Телефон: {guest_phone}\n"
+        f"🆔 Chat ID: {guest_chat_id}"
+    )
+
+    admin_chat_id = get_admin_chat_id()
+    if admin_chat_id:
+        try:
+            keyboard = [
+                [InlineKeyboardButton("✅ Підтвердити оплату", callback_data=f"club_paid:{guest_chat_id}:{guest_name}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await context.bot.send_photo(
+                chat_id=admin_chat_id,
+                photo=photo,
+                caption=caption,
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"Помилка відправки квитанції адміну: {e}")
+
+    await update.message.reply_text(
+        "Дякуємо! Квитанцію отримано ✅\n\n"
+        "Після перевірки оплати ми активуємо вашу клубну карту 💎",
+        reply_markup=get_main_keyboard()
+    )
+
+    context.user_data.pop("club_name", None)
+    context.user_data.pop("club_birthday", None)
+    context.user_data.pop("club_phone", None)
+    context.user_data.pop("club_chat_id", None)
+
+    return ConversationHandler.END
+
+async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+    parts = data.split(":", 2)
+
+    if len(parts) < 3:
+        await query.message.reply_text("Помилка підтвердження оплати.")
+        return
+
+    guest_chat_id = parts[1]
+    guest_name = parts[2]
+
+    valid_until = (datetime.now() + timedelta(days=60)).strftime("%d.%m.%Y")
+
+    try:
+        await context.bot.send_message(
+            chat_id=int(guest_chat_id),
+            text=(
+                "💎 Оплату підтверджено!\n\n"
+                f"Вітаємо, {guest_name}!\n"
+                "Вашу клубну карту активовано ✅\n\n"
+                "Умови:\n"
+                "• Знижка: -30% на кухню\n"
+                "• Не діє на акції та спецпропозиції\n"
+                f"• Діє до: {valid_until}\n\n"
+                "Покажіть це повідомлення при візиті 💎"
+            )
+        )
+
+        await query.message.reply_text("✅ Оплату підтверджено. Гостю надіслано повідомлення.")
+    except Exception as e:
+        await query.message.reply_text(f"Помилка надсилання гостю: {e}")
+
+    return CLUB_RECEIPT
 
     admin_chat_id = get_admin_chat_id()
     if admin_chat_id:
@@ -496,6 +591,7 @@ def main():
     app.add_handler(CommandHandler("club", club_command))
     app.add_handler(booking_handler)
     app.add_handler(club_handler)
+    app.add_handler(CallbackQueryHandler(club_paid_callback, pattern=r"^club_paid:'"))
 
     app.add_handler(
         MessageHandler(
