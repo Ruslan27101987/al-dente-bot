@@ -17,6 +17,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ConversationHandler,
+    CallbackQueryHandler,
     ContextTypes,
     filters,
 )
@@ -65,7 +66,6 @@ def ensure_csv_exists():
                 "Кількість гостей",
                 "Коментар",
                 "Chat ID",
-                "Нагадування надіслано",
             ])
 
 
@@ -82,37 +82,7 @@ def save_booking_to_csv(data: dict):
             data["guests"],
             data["comment"],
             data["chat_id"],
-            "ні",
         ])
-
-
-def read_bookings_from_csv():
-    ensure_csv_exists()
-    rows = []
-
-    with open(CSV_FILE, "r", newline="", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            rows.append(row)
-
-    return rows
-
-
-def write_bookings_to_csv(rows):
-    with open(CSV_FILE, "w", newline="", encoding="utf-8") as file:
-        fieldnames = [
-            "Ім'я",
-            "Телефон",
-            "Дата",
-            "Час",
-            "Кількість гостей",
-            "Коментар",
-            "Chat ID",
-            "Нагадування надіслано",
-        ]
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 def send_booking_email(data: dict):
@@ -191,60 +161,6 @@ async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: d
     print("Повідомлення адміну успішно відправлено")
 
 
-async def send_due_reminders(context: ContextTypes.DEFAULT_TYPE):
-    try:
-        rows = read_bookings_from_csv()
-        now = datetime.now()
-        changed = False
-
-        for row in rows:
-            reminder_sent = (row.get("Нагадування надіслано", "") or "").strip().lower()
-            if reminder_sent == "так":
-                continue
-
-            date_str = (row.get("Дата", "") or "").strip()
-            time_str = (row.get("Час", "") or "").strip()
-            chat_id_str = (row.get("Chat ID", "") or "").strip()
-
-            if not date_str or not time_str or not chat_id_str:
-                continue
-
-            try:
-                booking_dt = datetime.strptime(f"{date_str} {time_str}", "%d.%m.%Y %H:%M")
-                chat_id = int(chat_id_str)
-            except Exception as e:
-                print(f"Помилка читання рядка бронювання: {e}")
-                continue
-
-            reminder_dt = booking_dt - timedelta(hours=2)
-
-            if reminder_dt <= now < booking_dt:
-                text = (
-                    "⏰ Нагадуємо про ваше бронювання в Al Dente\n\n"
-                    f"📅 {date_str}\n"
-                    f"🕒 {time_str}\n"
-                    f"👥 Гостей: {row.get('Кількість гостей', '')}\n\n"
-                    "Чекаємо на вас 🍝"
-                )
-
-                try:
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text=text
-                    )
-                    row["Нагадування надіслано"] = "так"
-                    changed = True
-                    print(f"Нагадування успішно відправлено гостю chat_id={chat_id}")
-                except Exception as e:
-                    print(f"Помилка відправки нагадування гостю {chat_id}: {e}")
-
-        if changed:
-            write_bookings_to_csv(rows)
-
-    except Exception as e:
-        print(f"Помилка перевірки CSV-нагадувань: {e}")
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Привіт! Я бот Al Dente 🇮🇹\nОберіть потрібний розділ нижче 👇",
@@ -316,6 +232,16 @@ async def club_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
+
+async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "💎 Вступ до Al Dente Club\n\n"
+        "Напишіть, будь ласка, ваше ім'я:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return CLUB_NAME
+
+
 async def club_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -326,6 +252,53 @@ async def club_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup=ReplyKeyboardRemove()
     )
     return CLUB_NAME
+
+
+async def club_get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_name"] = update.message.text.strip()
+    await update.message.reply_text("Вкажіть дату народження, наприклад: 25.03.1995")
+    return CLUB_BIRTHDAY
+
+
+async def club_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_birthday"] = update.message.text.strip()
+    await update.message.reply_text("Вкажіть ваш телефон:")
+    return CLUB_PHONE
+
+
+async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["club_phone"] = update.message.text.strip()
+
+    text = (
+        "💎 Нова заявка на вступ до Al Dente Club\n\n"
+        f"👤 Ім'я: {context.user_data['club_name']}\n"
+        f"🎂 Дата народження: {context.user_data['club_birthday']}\n"
+        f"📞 Телефон: {context.user_data['club_phone']}"
+    )
+
+    admin_chat_id = get_admin_chat_id()
+    if admin_chat_id:
+        try:
+            await context.bot.send_message(chat_id=admin_chat_id, text=text)
+        except Exception as e:
+            print(f"Помилка відправки заявки клубу адміну: {e}")
+
+    await update.message.reply_text(
+        "💎 Ваша заявка прийнята!\n\n"
+        "Для активації клубу необхідно оплатити 499 грн 👇\n\n"
+        "💳 Реквізити для оплати:\n"
+        "Monobank: 5408 8100 4237 2606\n"
+        "Отримувач: Al Dente\n\n"
+        "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
+        reply_markup=get_main_keyboard()
+    )
+
+    context.user_data.pop("club_name", None)
+    context.user_data.pop("club_birthday", None)
+    context.user_data.pop("club_phone", None)
+
+    return ConversationHandler.END
+
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -476,55 +449,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Оберіть кнопку з меню нижче 👇",
             reply_markup=get_main_keyboard()
         )
-async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "💎 Вступ до Al Dente Club\n\n"
-        "Напишіть, будь ласка, ваше ім'я:",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    return CLUB_NAME
 
-
-async def club_get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["club_name"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть дату народження, наприклад: 25.03.1995")
-    return CLUB_BIRTHDAY
-
-
-async def club_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["club_birthday"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть ваш телефон:")
-    return CLUB_PHONE
-
-
-async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["club_phone"] = update.message.text.strip()
-
-    text = (
-        "💎 Нова заявка на вступ до Al Dente Club\n\n"
-        f"👤 Ім'я: {context.user_data['club_name']}\n"
-        f"🎂 Дата народження: {context.user_data['club_birthday']}\n"
-        f"📞 Телефон: {context.user_data['club_phone']}"
-    )
-
-    admin_chat_id = get_admin_chat_id()
-    if admin_chat_id:
-        try:
-            await context.bot.send_message(chat_id=admin_chat_id, text=text)
-        except Exception as e:
-            print(f"Помилка відправки заявки клубу адміну: {e}")
-
-    await update.message.reply_text(
-        "💎 Ваша заявка прийнята!\n\n"
-        "Для активації клубу необхідно оплатити 499 грн 👇\n\n"
-        "💳 Реквізити для оплати:\n"
-        "Monobank: 5408 8100 4237 2606\n"
-        "Отримувач: Al Dente\n\n"
-        "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
-        reply_markup=ReplyKeyboardRemove()
-    )
-
-    return ConversationHandler.END
 
 def main():
     if not TOKEN:
@@ -549,9 +474,10 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel_booking)],
     )
+
     club_handler = ConversationHandler(
         entry_points=[
-            MessageHandler(filters.Regex("^Стати членом клубу$"), club_join_start),
+            MessageHandler(filters.TEXT & filters.Regex("Стати членом клубу"), club_join_start),
             CallbackQueryHandler(club_join_callback, pattern="^club_join$"),
         ],
         states={
@@ -577,12 +503,6 @@ def main():
             handle_buttons
         )
     )
-
-    # if app.job_queue is not None:
-    #     app.job_queue.run_repeating(send_due_reminders, interval=60, first=10)
-    #     print("Перевірка CSV-нагадувань запущена")
-    # else:
-    #     print("JobQueue не доступний")
 
     print("Бот запущений")
     app.run_polling(drop_pending_updates=True)
