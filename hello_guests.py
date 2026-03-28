@@ -5,6 +5,8 @@ from email.message import EmailMessage
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
+from PIL import Image, ImageDraw, ImageFont
+
 from telegram import (
     Update,
     InlineKeyboardMarkup,
@@ -134,6 +136,28 @@ def build_google_calendar_link(name: str, phone: str, date_str: str, time_str: s
         f"&location={quote(location)}"
     )
     return url
+
+
+def generate_club_card(name: str, valid_until: str) -> str:
+    width, height = 800, 500
+
+    image = Image.new("RGB", (width, height), "#0f172a")
+    draw = ImageDraw.Draw(image)
+
+    font_title = ImageFont.load_default()
+    font_text = ImageFont.load_default()
+
+    draw.text((50, 40), "AL DENTE CLUB", fill="white", font=font_title)
+    draw.text((50, 200), f"Ім'я: {name}", fill="white", font=font_text)
+    draw.text((50, 260), f"Дійсна до: {valid_until}", fill="white", font=font_text)
+
+    card_number = f"AD-{str(abs(hash(name)))[:6]}"
+    draw.text((50, 320), f"Карта № {card_number}", fill="white", font=font_text)
+
+    path = f"/tmp/card_{card_number}.png"
+    image.save(path)
+
+    return path
 
 
 async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: dict):
@@ -282,6 +306,9 @@ async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
         reply_markup=ReplyKeyboardRemove()
     )
+    return CLUB_RECEIPT
+
+
 async def club_get_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.photo:
         await update.message.reply_text(
@@ -334,6 +361,7 @@ async def club_get_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return ConversationHandler.END
 
+
 async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -347,52 +375,26 @@ async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     guest_chat_id = parts[1]
     guest_name = parts[2]
-
     valid_until = (datetime.now() + timedelta(days=60)).strftime("%d.%m.%Y")
 
     try:
-        await context.bot.send_message(
-            chat_id=int(guest_chat_id),
-            text=(
-                "💎 Оплату підтверджено!\n\n"
-                f"Вітаємо, {guest_name}!\n"
-                "Вашу клубну карту активовано ✅\n\n"
-                "Умови:\n"
-                "• Знижка: -30% на кухню\n"
-                "• Не діє на акції та спецпропозиції\n"
-                f"• Діє до: {valid_until}\n\n"
-                "Покажіть це повідомлення при візиті 💎"
-            )
-        )
+        card_path = generate_club_card(guest_name, valid_until)
 
-        await query.message.reply_text("✅ Оплату підтверджено. Гостю надіслано повідомлення.")
+        with open(card_path, "rb") as card_file:
+            await context.bot.send_photo(
+                chat_id=int(guest_chat_id),
+                photo=card_file,
+                caption=(
+                    "💎 Ваша клубна карта готова!\n\n"
+                    f"Ім'я: {guest_name}\n"
+                    f"Діє до: {valid_until}\n\n"
+                    "Покажіть цю карту при візиті 💎"
+                )
+            )
+
+        await query.message.reply_text("✅ Карта створена та надіслана гостю.")
     except Exception as e:
         await query.message.reply_text(f"Помилка надсилання гостю: {e}")
-
-    return CLUB_RECEIPT
-
-    admin_chat_id = get_admin_chat_id()
-    if admin_chat_id:
-        try:
-            await context.bot.send_message(chat_id=admin_chat_id, text=text)
-        except Exception as e:
-            print(f"Помилка відправки заявки клубу адміну: {e}")
-
-    await update.message.reply_text(
-        "💎 Ваша заявка прийнята!\n\n"
-        "Для активації клубу необхідно оплатити 499 грн 👇\n\n"
-        "💳 Реквізити для оплати:\n"
-        "Monobank: 5408 8100 4237 2606\n"
-        "Отримувач: Al Dente\n\n"
-        "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
-        reply_markup=get_main_keyboard()
-    )
-
-    context.user_data.pop("club_name", None)
-    context.user_data.pop("club_birthday", None)
-    context.user_data.pop("club_phone", None)
-
-    return ConversationHandler.END
 
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -579,6 +581,7 @@ def main():
             CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_name)],
             CLUB_BIRTHDAY: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_birthday)],
             CLUB_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_phone)],
+            CLUB_RECEIPT: [MessageHandler(filters.PHOTO, club_get_receipt)],
         },
         fallbacks=[CommandHandler("cancel", cancel_booking)],
     )
@@ -591,7 +594,7 @@ def main():
     app.add_handler(CommandHandler("club", club_command))
     app.add_handler(booking_handler)
     app.add_handler(club_handler)
-    app.add_handler(CallbackQueryHandler(club_paid_callback, pattern=r"^club_paid:'"))
+    app.add_handler(CallbackQueryHandler(club_paid_callback, pattern=r"^club_paid:"))
 
     app.add_handler(
         MessageHandler(
