@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 from PIL import Image, ImageDraw, ImageFont
+import random
 
 from telegram import (
     Update,
@@ -138,26 +139,33 @@ def build_google_calendar_link(name: str, phone: str, date_str: str, time_str: s
     return url
 
 
-def generate_club_card(name: str, valid_until: str) -> str:
-    width, height = 800, 500
+def generate_club_card(name):
+    template_path = "club_template.png"
+    output_path = f"card_{name}.png"
 
-    image = Image.new("RGB", (width, height), "#0f172a")
+    image = Image.open(template_path)
     draw = ImageDraw.Draw(image)
 
-    font_title = ImageFont.load_default()
-    font_text = ImageFont.load_default()
+    # Шрифт (если не найдёт — скажешь, решим)
+    try:
+        font_big = ImageFont.truetype("arial.ttf", 60)
+        font_small = ImageFont.truetype("arial.ttf", 40)
+    except:
+        font_big = None
+        font_small = None
 
-    draw.text((50, 40), "AL DENTE CLUB", fill="white", font=font_title)
-    draw.text((50, 200), f"Ім'я: {name}", fill="white", font=font_text)
-    draw.text((50, 260), f"Дійсна до: {valid_until}", fill="white", font=font_text)
+    # Данные
+    import datetime
+    expiry_date = (datetime.datetime.now() + datetime.timedelta(days=90)).strftime("%d.%m.%Y")
+    card_number = f"AD-{random.randint(100000,999999)}"
 
-    card_number = f"AD-{str(abs(hash(name)))[:6]}"
-    draw.text((50, 320), f"Карта № {card_number}", fill="white", font=font_text)
+    # Позиции (можем потом идеально выровнять)
+    draw.text((400, 450), f"Ім'я: {name}", fill="white", font=font_big)
+    draw.text((400, 550), f"Дійсна до: {expiry_date}", fill="white", font=font_small)
+    draw.text((400, 700), f"Карта № {card_number}", fill="white", font=font_small)
 
-    path = f"/tmp/card_{card_number}.png"
-    image.save(path)
-
-    return path
+    image.save(output_path)
+    return output_path
 
 
 async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: dict):
@@ -378,14 +386,14 @@ async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     valid_until = (datetime.now() + timedelta(days=60)).strftime("%d.%m.%Y")
 
     try:
-        card_path = generate_club_card(guest_name, valid_until)
+        card_path = generate_club_card(guest_name)
 
-        with open(card_path, "rb") as card_file:
+        with open(card_path, "rb") as photo:
             await context.bot.send_photo(
                 chat_id=int(guest_chat_id),
-                photo=card_file,
+                photo=photo,
                 caption=(
-                    "💎 Ваша клубна карта готова!\n\n"
+                    "🎉 Ваша клубна карта готова!\n\n"
                     f"Ім'я: {guest_name}\n"
                     f"Діє до: {valid_until}\n\n"
                     "Покажіть цю карту при візиті 💎"
@@ -393,8 +401,9 @@ async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
 
         await query.message.reply_text("✅ Карта створена та надіслана гостю.")
+
     except Exception as e:
-        await query.message.reply_text(f"Помилка надсилання гостю: {e}")
+        await query.message.reply_text(f"❌ Помилка: {e}")
 
 
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
