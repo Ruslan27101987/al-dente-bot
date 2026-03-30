@@ -152,45 +152,43 @@ def generate_club_card(name):
     draw = ImageDraw.Draw(image)
 
     font_path = "./font.ttf"
-
     if not os.path.exists(font_path):
-        raise Exception("Шрифт не найден")
+        raise Exception("Шрифт font.ttf не знайдено")
 
-    # размеры подогнаны под твой макет
-    font_name = ImageFont.truetype(font_path, 130)
-    font_small = ImageFont.truetype(font_path, 60)
+    font_name = ImageFont.truetype(font_path, 120)
+    font_small = ImageFont.truetype(font_path, 52)
 
     expiry_date = (datetime.datetime.now() + datetime.timedelta(days=60)).strftime("%d.%m.%Y")
     card_number = f"AD-{random.randint(100000, 999999)}"
 
     gold = (212, 175, 55)
 
-    # --- ИМЯ (центр) ---
+    # ІМ'Я
     text = name
     bbox = draw.textbbox((0, 0), text, font=font_name)
     x = (image.width - (bbox[2] - bbox[0])) / 2
     y = image.height * 0.42
     draw.text((x, y), text, fill=gold, font=font_name)
 
-    # --- СКИДКА ---
+    # ЗНИЖКА
     text = "ЗНИЖКА -30%"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
-    y = image.height * 0.55
+    y = image.height * 0.56
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    # --- ДАТА ---
+    # ДАТА
     text = f"ДІЄ ДО: {expiry_date}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
-    y = image.height * 0.65
+    y = image.height * 0.64
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    # --- НОМЕР ---
+    # НОМЕР
     text = f"№ {card_number}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
-    y = image.height * 0.73
+    y = image.height * 0.72
     draw.text((x, y), text, fill=gold, font=font_small)
 
     image.save(output_path)
