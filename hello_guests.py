@@ -57,6 +57,15 @@ def get_main_keyboard():
     )
 
 
+def get_cancel_keyboard():
+    keyboard = [["❌ Скасувати"]]
+    return ReplyKeyboardMarkup(
+        keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
 def ensure_csv_exists():
     if not os.path.isfile(CSV_FILE):
         with open(CSV_FILE, "w", newline="", encoding="utf-8") as file:
@@ -163,28 +172,24 @@ def generate_club_card(name):
 
     gold = (212, 175, 55)
 
-    # ІМ'Я
     text = name
     bbox = draw.textbbox((0, 0), text, font=font_name)
     x = (image.width - (bbox[2] - bbox[0])) / 2
     y = image.height * 0.42
     draw.text((x, y), text, fill=gold, font=font_name)
 
-    # ЗНИЖКА
     text = "ЗНИЖКА -30%"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
     y = image.height * 0.56
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    # ДАТА
     text = f"ДІЄ ДО: {expiry_date}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
     y = image.height * 0.64
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    # НОМЕР
     text = f"№ {card_number}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
     x = (image.width - (bbox[2] - bbox[0])) / 2
@@ -193,6 +198,7 @@ def generate_club_card(name):
 
     image.save(output_path)
     return output_path
+
 
 async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: dict):
     admin_chat_id = get_admin_chat_id()
@@ -297,7 +303,7 @@ async def club_join_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "💎 Вступ до Al Dente Club\n\n"
         "Напишіть, будь ласка, ваше ім'я:",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=get_cancel_keyboard()
     )
     return CLUB_NAME
 
@@ -311,20 +317,26 @@ async def club_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.message.reply_text(
         "💎 Вступ до Al Dente Club\n\n"
         "Напишіть, будь ласка, ваше ім'я:",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=get_cancel_keyboard()
     )
     return CLUB_NAME
 
 
 async def club_get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["club_name"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть дату народження, наприклад: 25.03.1995")
+    await update.message.reply_text(
+        "Вкажіть дату народження, наприклад: 25.03.1995",
+        reply_markup=get_cancel_keyboard()
+    )
     return CLUB_BIRTHDAY
 
 
 async def club_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["club_birthday"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть ваш телефон:")
+    await update.message.reply_text(
+        "Вкажіть ваш телефон:",
+        reply_markup=get_cancel_keyboard()
+    )
     return CLUB_PHONE
 
 
@@ -338,7 +350,7 @@ async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Monobank: 5408 8100 4237 2606\n"
         "Отримувач: Al Dente\n\n"
         "Після оплати надішліть, будь ласка, скрін або фото квитанції 📸",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=get_cancel_keyboard()
     )
     return CLUB_RECEIPT
 
@@ -346,7 +358,8 @@ async def club_get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def club_get_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message.photo:
         await update.message.reply_text(
-            "Будь ласка, надішліть саме фото або скрін квитанції 📸"
+            "Будь ласка, надішліть саме фото або скрін квитанції 📸",
+            reply_markup=get_cancel_keyboard()
         )
         return CLUB_RECEIPT
 
@@ -435,39 +448,52 @@ async def club_paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def book_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Бронювання столика 🍽️\n\nНапишіть, будь ласка, ваше ім'я:",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=get_cancel_keyboard()
     )
     return NAME
 
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть ваш телефон:")
+    await update.message.reply_text(
+        "Вкажіть ваш телефон:",
+        reply_markup=get_cancel_keyboard()
+    )
     return PHONE
 
 
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["phone"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть дату бронювання, наприклад: 25.03.2026")
+    await update.message.reply_text(
+        "Вкажіть дату бронювання, наприклад: 25.03.2026",
+        reply_markup=get_cancel_keyboard()
+    )
     return DATE
 
 
 async def get_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["date"] = update.message.text.strip()
-    await update.message.reply_text("Вкажіть час, наприклад: 19:00")
+    await update.message.reply_text(
+        "Вкажіть час, наприклад: 19:00",
+        reply_markup=get_cancel_keyboard()
+    )
     return TIME
 
 
 async def get_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["time"] = update.message.text.strip()
-    await update.message.reply_text("Скільки буде гостей?")
+    await update.message.reply_text(
+        "Скільки буде гостей?",
+        reply_markup=get_cancel_keyboard()
+    )
     return GUESTS
 
 
 async def get_guests(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["guests"] = update.message.text.strip()
     await update.message.reply_text(
-        "Напишіть коментар до бронювання або надішліть '-' якщо без коментаря:"
+        "Напишіть коментар до бронювання або надішліть '-' якщо без коментаря:",
+        reply_markup=get_cancel_keyboard()
     )
     return COMMENT
 
@@ -555,7 +581,7 @@ async def get_comment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        "Бронювання скасовано.",
+        "Дію скасовано.",
         reply_markup=get_main_keyboard()
     )
     return ConversationHandler.END
@@ -604,7 +630,10 @@ def main():
             GUESTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_guests)],
             COMMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_comment)],
         },
-        fallbacks=[CommandHandler("cancel", cancel_booking)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_booking),
+            MessageHandler(filters.Regex("^❌ Скасувати$"), cancel_booking),
+        ],
     )
 
     club_handler = ConversationHandler(
@@ -616,9 +645,15 @@ def main():
             CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_name)],
             CLUB_BIRTHDAY: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_birthday)],
             CLUB_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_phone)],
-            CLUB_RECEIPT: [MessageHandler(filters.PHOTO, club_get_receipt)],
+            CLUB_RECEIPT: [
+                MessageHandler(filters.PHOTO, club_get_receipt),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_receipt),
+            ],
         },
-        fallbacks=[CommandHandler("cancel", cancel_booking)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_booking),
+            MessageHandler(filters.Regex("^❌ Скасувати$"), cancel_booking),
+        ],
     )
 
     app.add_handler(CommandHandler("start", start))
