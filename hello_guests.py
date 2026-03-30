@@ -623,12 +623,12 @@ def main():
             MessageHandler(filters.Regex("^📅 Бронювання$"), book_start),
         ],
         states={
-            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
-            DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_date)],
-            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_time)],
-            GUESTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_guests)],
-            COMMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_comment)],
+            NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_name)],
+            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_phone)],
+            DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_date)],
+            TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_time)],
+            GUESTS: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_guests)],
+            COMMENT: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), get_comment)],
         },
         fallbacks=[
             CommandHandler("cancel", cancel_booking),
@@ -642,12 +642,12 @@ def main():
             CallbackQueryHandler(club_join_callback, pattern="^club_join$"),
         ],
         states={
-            CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_name)],
-            CLUB_BIRTHDAY: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_birthday)],
-            CLUB_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_phone)],
+            CLUB_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), club_get_name)],
+            CLUB_BIRTHDAY: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), club_get_birthday)],
+            CLUB_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), club_get_phone)],
             CLUB_RECEIPT: [
                 MessageHandler(filters.PHOTO, club_get_receipt),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, club_get_receipt),
+                MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^❌ Скасувати$"), club_get_receipt),
             ],
         },
         fallbacks=[
@@ -669,7 +669,7 @@ def main():
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & ~filters.Regex("^📅 Бронювання$"),
-            handle_buttons
+            handle_buttons 
         )
     )
 
