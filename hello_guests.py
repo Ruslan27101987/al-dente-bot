@@ -154,42 +154,43 @@ def generate_club_card(name):
     font_path = "./font.ttf"
 
     if not os.path.exists(font_path):
-        raise FileNotFoundError(f"Не знайдено шрифт: {font_path}")
+        raise Exception("Шрифт не найден")
 
-    font_name = ImageFont.truetype(font_path, 150)
-    font_small = ImageFont.truetype(font_path, 70)
+    # размеры подогнаны под твой макет
+    font_name = ImageFont.truetype(font_path, 130)
+    font_small = ImageFont.truetype(font_path, 60)
 
     expiry_date = (datetime.datetime.now() + datetime.timedelta(days=60)).strftime("%d.%m.%Y")
     card_number = f"AD-{random.randint(100000, 999999)}"
 
     gold = (212, 175, 55)
 
+    # --- ИМЯ (центр) ---
     text = name
     bbox = draw.textbbox((0, 0), text, font=font_name)
-    text_width = bbox[2] - bbox[0]
-    x = (image.width - text_width) / 2
-    y = image.height * 0.40
+    x = (image.width - (bbox[2] - bbox[0])) / 2
+    y = image.height * 0.42
     draw.text((x, y), text, fill=gold, font=font_name)
 
-    text = "Знижка -30%"
+    # --- СКИДКА ---
+    text = "ЗНИЖКА -30%"
     bbox = draw.textbbox((0, 0), text, font=font_small)
-    text_width = bbox[2] - bbox[0]
-    x = (image.width - text_width) / 2
-    y = image.height * 0.52
+    x = (image.width - (bbox[2] - bbox[0])) / 2
+    y = image.height * 0.55
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    text = f"Дійсна до: {expiry_date}"
+    # --- ДАТА ---
+    text = f"ДІЄ ДО: {expiry_date}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
-    text_width = bbox[2] - bbox[0]
-    x = (image.width - text_width) / 2
-    y = image.height * 0.62
+    x = (image.width - (bbox[2] - bbox[0])) / 2
+    y = image.height * 0.65
     draw.text((x, y), text, fill=gold, font=font_small)
 
-    text = f"Карта № {card_number}"
+    # --- НОМЕР ---
+    text = f"№ {card_number}"
     bbox = draw.textbbox((0, 0), text, font=font_small)
-    text_width = bbox[2] - bbox[0]
-    x = (image.width - text_width) / 2
-    y = image.height * 0.72
+    x = (image.width - (bbox[2] - bbox[0])) / 2
+    y = image.height * 0.73
     draw.text((x, y), text, fill=gold, font=font_small)
 
     image.save(output_path)
