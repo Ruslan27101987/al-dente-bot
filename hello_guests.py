@@ -140,33 +140,51 @@ def build_google_calendar_link(name: str, phone: str, date_str: str, time_str: s
 
 
 def generate_club_card(name):
+    from PIL import Image, ImageDraw, ImageFont
+    import random
+    import datetime
+
     template_path = "club_template.png"
     output_path = f"card_{name}.png"
 
     image = Image.open(template_path)
     draw = ImageDraw.Draw(image)
 
-    # Шрифт (если не найдёт — скажешь, решим)
     try:
-        font_big = ImageFont.truetype("arial.ttf", 60)
-        font_small = ImageFont.truetype("arial.ttf", 40)
-    except:
-        font_big = None
-        font_small = None
+        font_big = ImageFont.truetype("DejaVuSans-Bold.ttf", 180)
+        font_small = ImageFont.truetype("DejaVuSans-Bold.ttf", 110)
+    except Exception:
+        font_big = ImageFont.load_default()
+        font_small = ImageFont.load_default()
 
-    # Данные
-    import datetime
-    expiry_date = (datetime.datetime.now() + datetime.timedelta(days=90)).strftime("%d.%m.%Y")
-    card_number = f"AD-{random.randint(100000,999999)}"
+    expiry_date = (datetime.datetime.now() + datetime.timedelta(days=60)).strftime("%d.%m.%Y")
+    card_number = f"AD-{random.randint(100000, 999999)}"
 
-    # Позиции (можем потом идеально выровнять)
-    draw.text((400, 450), f"Ім'я: {name}", fill="white", font=font_big)
-    draw.text((400, 550), f"Дійсна до: {expiry_date}", fill="white", font=font_small)
-    draw.text((400, 700), f"Карта № {card_number}", fill="white", font=font_small)
+    gold = (212, 175, 55)
+
+    text = name
+    bbox = draw.textbbox((0, 0), text, font=font_big)
+    text_width = bbox[2] - bbox[0]
+    x = (image.width - text_width) / 2
+    y = image.height * 0.38
+    draw.text((x, y), text, fill=gold, font=font_big)
+
+    text = f"Дійсна до: {expiry_date}"
+    bbox = draw.textbbox((0, 0), text, font=font_small)
+    text_width = bbox[2] - bbox[0]
+    x = (image.width - text_width) / 2
+    y = image.height * 0.55
+    draw.text((x, y), text, fill=gold, font=font_small)
+
+    text = f"Карта № {card_number}"
+    bbox = draw.textbbox((0, 0), text, font=font_small)
+    text_width = bbox[2] - bbox[0]
+    x = (image.width - text_width) / 2
+    y = image.height * 0.65
+    draw.text((x, y), text, fill=gold, font=font_small)
 
     image.save(output_path)
     return output_path
-
 
 async def notify_admin_about_booking(context: ContextTypes.DEFAULT_TYPE, data: dict):
     admin_chat_id = get_admin_chat_id()
